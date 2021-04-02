@@ -2,7 +2,7 @@
 {
     public class DefaultServiceConfiguration
     {
-        public AdapterConfigUrationss AdapterConfigs { get; set; }
+        public AdapterConfigurations AdapterConfigs { get; set; }
 
     }
 }

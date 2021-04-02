@@ -1,8 +1,8 @@
 ﻿namespace LACE.Core.Configuration
 {
-    public class AdapterConfigUrationss
+    public class AdapterConfigurations
     {
-        public MeterAdapterConfigurations MetricAdapters { get; set; }
+        public MeterAdapterConfigurations MeterAdapters { get; set; }
         public MonitorAdapterConfigurations MonitorAdapters { get; set; }
         public MachineAdapterConfigurations MachineAdapters { get; set; }
 

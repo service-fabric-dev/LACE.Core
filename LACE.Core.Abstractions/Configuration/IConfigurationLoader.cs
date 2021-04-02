@@ -1,9 +1,8 @@
 ﻿namespace LACE.Core.Abstractions.Configuration
 {
     // ReSharper disable once TypeParameterCanBeVariant
-    public interface IConfigurationLoader<TConfigurationPointer>
-        where TConfigurationPointer : IConfigurationPointer
+    public interface IConfigurationLoader
     {
-        TConfiguration GetConfiguration<TConfiguration>(TConfigurationPointer pointer) where TConfiguration : IConfiguration;
+        TConfiguration Load<TConfiguration>() where TConfiguration : IConfiguration;
     }
 }
