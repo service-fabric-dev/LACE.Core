@@ -14,14 +14,14 @@ using LACE.Data.Cosmos.Stores;
 
 namespace LACE.Data.Cosmos
 {
-    public class SimpleRepository<TDocument> : ISimpleRepository<TDocument> where TDocument : class, IEtagged
+    public class DocumentRepository<TDocument> : IDocumentRepository<TDocument>
     {
         private readonly CosmosContainerStore _containerStore;
         private readonly DataConfiguration    _configuration;
         private readonly string               _partitionKeyValue;
         private readonly PartitionKey         _partitionKey;
 
-        public SimpleRepository(
+        public DocumentRepository(
             CosmosContainerStore containerStore,
             DataConfiguration    configuration)
         {
@@ -49,12 +49,16 @@ namespace LACE.Data.Cosmos
             };
         }
 
-        public async Task<DocumentContainer<TDocument>> UpsertAsync(string id, TDocument document, CancellationToken cancellationToken)
+        public async Task<DocumentContainer<TDocument>> UpsertAsync(
+            string id,
+            string etag,
+            TDocument document,
+            CancellationToken cancellationToken)
         {
             id.GuardNullOrWhiteSpace(nameof(id));
             document.Guard(nameof(document));
 
-            var wrapped = Wrap(id, document);
+            var wrapped = Wrap(id, etag, document);
             return await UpsertInternalAsync(id, wrapped, cancellationToken);
         }
 
@@ -91,7 +95,7 @@ namespace LACE.Data.Cosmos
             validated = null;
             if (toValidate == null)
             {
-                return new InternalServerErrorException($"{nameof(SimpleRepository<TDocument>)}, document {_partitionKeyValue}/{id}: null database response");
+                return new InternalServerErrorException($"{nameof(DocumentRepository<TDocument>)}, document {_partitionKeyValue}/{id}: null database response");
             }
 
             switch (toValidate.StatusCode)
@@ -142,20 +146,20 @@ namespace LACE.Data.Cosmos
             };
         }
 
-        private DocumentContainer<TDocument> Wrap(string id, TDocument document)
+        private DocumentContainer<TDocument> Wrap(string id, string etag, TDocument document)
         {
             return new()
             {
                 Value        = document,
                 Id           = id,
-                ETag         = document.ETag,
+                ETag         = etag,
                 PartitionKey = _partitionKeyValue
             };
         }
 
         private async Task<TType> TryAsync<TType>(Func<Task<TType>> operation)
         {
-            const string wrapperError = nameof(SimpleRepository<TDocument>) + ": operation failed, see inner exception for details";
+            const string wrapperError = nameof(DocumentRepository<TDocument>) + ": operation failed, see inner exception for details";
             try
             {
                 return await operation();
