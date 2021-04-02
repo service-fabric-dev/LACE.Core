@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LACE.Data.Cosmos
+namespace LACE.Data.Cosmos.Abstractions
 {
     public interface IDocumentRepository<TDocument>
     {

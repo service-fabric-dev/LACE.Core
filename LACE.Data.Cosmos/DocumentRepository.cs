@@ -1,16 +1,15 @@
 ﻿using LACE.Core.Exceptions;
 using LACE.Core.Extensions;
+using LACE.Data.Cosmos.Abstractions;
 using LACE.Data.Cosmos.Configuration;
 using LACE.Data.Cosmos.Exceptions;
 using LACE.Data.Cosmos.Model;
+using LACE.Data.Cosmos.Stores;
 using Microsoft.Azure.Cosmos;
 using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using LACE.Data.Cosmos.Abstractions;
-using LACE.Data.Cosmos.Enums;
-using LACE.Data.Cosmos.Stores;
 
 namespace LACE.Data.Cosmos
 {

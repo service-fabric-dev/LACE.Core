@@ -16,7 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LACE.Core.Abstractions\LACE.Core.Abstractions.csproj" />
     <ProjectReference Include="..\LACE.Core\LACE.Core.csproj" />
+    <ProjectReference Include="..\LACE.Data.Cosmos.Abstractions\LACE.Data.Cosmos.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

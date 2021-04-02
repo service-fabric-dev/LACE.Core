@@ -1,6 +1,4 @@
-﻿using LACE.Data.Cosmos.Abstractions;
-using LACE.Data.Cosmos.Enums;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace LACE.Data.Cosmos.Model
 {
