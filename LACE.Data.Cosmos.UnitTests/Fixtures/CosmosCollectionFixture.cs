@@ -2,6 +2,7 @@
 using Microsoft.Azure.Cosmos;
 using System;
 using LACE.Data.Cosmos.Stores;
+using Microsoft.Azure.Cosmos.Fluent;
 using Xunit;
 
 namespace LACE.Data.Cosmos.UnitTests.Fixtures
@@ -15,11 +16,12 @@ namespace LACE.Data.Cosmos.UnitTests.Fixtures
         public const string PartitionKey     = "test-partition";
         public const string PartitionKeyPath = "/PartitionKey";
 
-        public DataConfiguration    DataConfig    { get; } = InitializeConfig();
-        public CosmosClient         Client        { get; } = InitializeClient();
-        public CosmosDatabaseStore  Databases     => new(Client);
-        public CosmosContainerStore Containers    => new(Databases);
-        public PartitionKey         TestPartition => new(DataConfig.PartitionKey);
+        public DataConfiguration                DataConfig      { get; } = InitializeConfig();
+        public RepositoryPartitionConfiguration PartitionConfig { get; } = InitializePartition();
+        public CosmosClient                     Client          { get; } = InitializeClient();
+        public CosmosDatabaseStore              Databases       => new(Client);
+        public CosmosContainerStore             Containers      => new(Databases);
+        public PartitionKey                     TestPartition   => new(PartitionConfig.PartitionKey);
 
         public void Dispose()
         {
@@ -31,9 +33,16 @@ namespace LACE.Data.Cosmos.UnitTests.Fixtures
             return new()
             {
                 ConnectionString = ConnectionString,
-                DatabaseName     = DatabaseName,
-                ContainerName    = ContainerName,
-                PartitionKey     = PartitionKey,
+                DatabaseName     = DatabaseName
+            };
+        }
+
+        private static RepositoryPartitionConfiguration InitializePartition()
+        {
+            return new()
+            {
+                ContainerName = ContainerName,
+                PartitionKey = PartitionKey,
                 PartitionKeyPath = PartitionKeyPath
             };
         }

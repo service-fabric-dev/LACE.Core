@@ -3,6 +3,6 @@
     // ReSharper disable once TypeParameterCanBeVariant
     public interface IConfigurationLoader
     {
-        TConfiguration Load<TConfiguration>() where TConfiguration : IConfiguration;
+        TConfiguration Load<TConfiguration>(string key) where TConfiguration : new();
     }
 }

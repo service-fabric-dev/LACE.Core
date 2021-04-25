@@ -8,17 +8,14 @@
     <Company></Company>
     <Product>LACE</Product>
     <Description>Cosmos adapter classes for the LACE IoT platform</Description>
-    <Version>1.0.0</Version>
+    <Version>2.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="LACE.Core" Version="3.3.0" />
+    <PackageReference Include="LACE.Core.Abstractions" Version="3.3.0" />
+    <PackageReference Include="LACE.Data.Cosmos.Abstractions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.17.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\LACE.Core.Abstractions\LACE.Core.Abstractions.csproj" />
-    <ProjectReference Include="..\LACE.Core\LACE.Core.csproj" />
-    <ProjectReference Include="..\LACE.Data.Cosmos.Abstractions\LACE.Data.Cosmos.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
