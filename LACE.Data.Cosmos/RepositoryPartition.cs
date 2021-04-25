@@ -7,43 +7,89 @@ using LACE.Data.Cosmos.Model;
 using LACE.Data.Cosmos.Stores;
 using Microsoft.Azure.Cosmos;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace LACE.Data.Cosmos
 {
-    public class DocumentRepository<TDocument> : IDocumentRepository<TDocument>
+    public class RepositoryPartition<TDocument> : IDocumentRepository<TDocument>
     {
+        private readonly DataConfiguration _dataConfiguration;
+        private readonly RepositoryPartitionConfiguration _partitionConfiguration;
         private readonly CosmosContainerStore _containerStore;
-        private readonly DataConfiguration    _configuration;
-        private readonly string               _partitionKeyValue;
-        private readonly PartitionKey         _partitionKey;
+        private readonly string _partitionKeyValue;
+        private readonly PartitionKey _partitionKey;
 
-        public DocumentRepository(
-            CosmosContainerStore containerStore,
-            DataConfiguration    configuration)
+        public RepositoryPartition(
+            DataConfiguration dataConfiguration,
+            RepositoryPartitionConfiguration partitionConfiguration,
+            CosmosContainerStore containerStore)
         {
-            _configuration     = configuration;
+            _dataConfiguration = dataConfiguration.Guard(nameof(dataConfiguration));
+            _partitionConfiguration = partitionConfiguration.Guard(nameof(partitionConfiguration));
             _containerStore    = containerStore.Guard(nameof(containerStore));
-            _partitionKeyValue = configuration.PartitionKey.Guard(nameof(configuration.PartitionKey));
+            _partitionKeyValue = partitionConfiguration.PartitionKey.Guard(nameof(partitionConfiguration.PartitionKey));
             _partitionKey      = new PartitionKey(_partitionKeyValue);
         }
 
         private Task<Container> GetContainerAsync() => _containerStore.GetAsync(
-            _configuration.DatabaseName,
-            _configuration.ContainerName,
-            _configuration.PartitionKeyPath);
+            _dataConfiguration.DatabaseName,
+            _partitionConfiguration.ContainerName,
+            _partitionConfiguration.PartitionKeyPath);
+
+        public async Task<List<DocumentContainer<TDocument>>> GetAllAsync(CancellationToken cancellationToken)
+        {
+            var documentContainers = new List<DocumentContainer<TDocument>>();
+
+            var container = await GetContainerAsync();
+            using var iterator = container.GetItemQueryIterator<DocumentContainer<TDocument>>(
+                requestOptions: new QueryRequestOptions
+                {
+                    PartitionKey = _partitionKey
+                });
+            while (iterator.HasMoreResults)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var feedResponse = await TryAsync(() => iterator.ReadNextAsync(cancellationToken));
+
+                var validationExceptions = new List<Exception>();
+                foreach (var entry in feedResponse) // Implicit cast here is so slick
+                {
+                    switch (ValidateDocument(nameof(GetAsync), entry.Id, entry, out var validated))
+                    {
+                        case null:
+                            documentContainers.Add(entry);
+                            break;
+                        case { } exception:
+                            validationExceptions.Add(exception);
+                            break;
+                    }
+                }
+
+                switch (validationExceptions.Count)
+                {
+                    case 1:
+                        throw validationExceptions[0];
+                    case { } count when count > 1:
+                        throw new AggregateException(validationExceptions);
+                }
+
+            }
+
+            return documentContainers;
+        }
 
         public async Task<DocumentContainer<TDocument>> GetAsync(string id, CancellationToken cancellationToken)
         {
             id.GuardNullOrWhiteSpace(nameof(id));
 
             var container = await GetContainerAsync();
-            var response  = await TryAsync(() => container.ReadItemAsync<DocumentContainer<TDocument>>(id, _partitionKey, cancellationToken: cancellationToken));
+            var response = await TryAsync(() => container.ReadItemAsync<DocumentContainer<TDocument>>(id, _partitionKey, cancellationToken: cancellationToken));
             return ValidateDocument(nameof(GetAsync), id, response.Resource, out var validated) switch
             {
-                null  => validated,
+                null => validated,
                 { } e => throw e
             };
         }
@@ -75,16 +121,16 @@ namespace LACE.Data.Cosmos
             document.State |= DocumentState.Updated | DocumentState.Created;
             switch (ValidateDocument(nameof(UpsertAsync), id, document, out var validated))
             {
-                case null:  break;
+                case null: break;
                 case { } e: throw e;
             }
 
             var requestOptions = GetRequestOptions(validated.ETag);
-            var container      = await GetContainerAsync();
-            var response       = await container.UpsertItemAsync(validated, _partitionKey, requestOptions, cancellationToken);
+            var container = await GetContainerAsync();
+            var response = await container.UpsertItemAsync(validated, _partitionKey, requestOptions, cancellationToken);
             return ValidateDocument(nameof(UpsertAsync), id, response, out validated) switch
             {
-                null  => validated,
+                null => validated,
                 { } e => throw e
             };
         }
@@ -94,7 +140,7 @@ namespace LACE.Data.Cosmos
             validated = null;
             if (toValidate == null)
             {
-                return new InternalServerErrorException($"{nameof(DocumentRepository<TDocument>)}, document {_partitionKeyValue}/{id}: null database response");
+                return new InternalServerErrorException($"{nameof(RepositoryPartition<TDocument>)}, document {_partitionKeyValue}/{id}: null database response");
             }
 
             switch (toValidate.StatusCode)
@@ -104,7 +150,7 @@ namespace LACE.Data.Cosmos
                 case HttpStatusCode.InternalServerError:
                     return new InternalServerErrorException($"{context}, document {_partitionKeyValue}/{id}: operation failed");
                 case { } code when code >= HttpStatusCode.MultipleChoices:
-                    return new HttpException(toValidate.StatusCode, $"{context}, document {_partitionKeyValue}/{id}: encountered HTTP {(int) code} - {code.ToName()}");
+                    return new HttpException(toValidate.StatusCode, $"{context}, document {_partitionKeyValue}/{id}: encountered HTTP {(int)code} - {code.ToName()}");
             }
 
             if (toValidate.Resource.ETag.IsNullOrWhiteSpace())
@@ -131,7 +177,7 @@ namespace LACE.Data.Cosmos
 
             // Driven by config
             toValidate.PartitionKey ??= _partitionKeyValue;
-            toValidate.Id           ??= id;
+            toValidate.Id ??= id;
 
             validated = toValidate;
             return null;
@@ -149,16 +195,16 @@ namespace LACE.Data.Cosmos
         {
             return new()
             {
-                Value        = document,
-                Id           = id,
-                ETag         = etag,
+                Value = document,
+                Id = id,
+                ETag = etag,
                 PartitionKey = _partitionKeyValue
             };
         }
 
         private async Task<TType> TryAsync<TType>(Func<Task<TType>> operation)
         {
-            const string wrapperError = nameof(DocumentRepository<TDocument>) + ": operation failed, see inner exception for details";
+            const string wrapperError = nameof(RepositoryPartition<TDocument>) + ": operation failed, see inner exception for details";
             try
             {
                 return await operation();

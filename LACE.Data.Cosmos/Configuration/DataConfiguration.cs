@@ -1,18 +1,10 @@
-﻿using LACE.Core.Abstractions.Configuration;
-
-namespace LACE.Data.Cosmos.Configuration
+﻿namespace LACE.Data.Cosmos.Configuration
 {
-    public class DataConfiguration : IConfiguration
+    public class DataConfiguration
     {
         public string ConnectionString { get; set; }
         public string DatabaseName { get; set; }
-        public string ContainerName { get; set; }
-        public string PartitionKeyPath { get; set; }
-        public string PartitionKey { get; set; }
-    }
-
-    public class StorageEndpoint
-    {
-        public DataConfiguration Configuration { get; set; }
+        public string ApplicationName { get; set; }
+        public RepositoryPartitionConfigurations Partitions { get; set; }
     }
 }
